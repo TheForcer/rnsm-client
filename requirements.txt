@@ -1,2 +1,3 @@
 httpx
 pynacl
+python-hosts

