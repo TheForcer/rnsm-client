@@ -2,7 +2,6 @@
 
 import httpx  # Handling HTTP request/responses
 import nacl.secret
-import nacl.utils
 import datetime  # Handling time-related data
 import os, sys  # For system-related data handling (hostname/usernames)
 import base64, pathlib
