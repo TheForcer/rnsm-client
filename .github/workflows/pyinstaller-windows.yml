@@ -21,7 +21,7 @@ jobs:
         replacements: 'http://localhost:5000=https://rnsm.uber.space'
 
     - name: Package application with Pyinstaller
-      uses: JackMcKew/pyinstaller-action-windows@main
+      uses: TheForcer/pyinstaller-action-windows@main
       with:
         path: src
 
