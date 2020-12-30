@@ -1,0 +1,1 @@
+pyarmor.exe pack --name=Blocky --output=.\ -e "--uac-admin --icon=favicon.ico --onefile --console --hidden-import _cffi_backend" -x  "--advanced 2" ..\rnsm.py

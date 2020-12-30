@@ -3,10 +3,10 @@
 # Additional modules -> install via pip
 import httpx  # Handling HTTP requests/responses
 import nacl.secret  # Providing symmetric encryption
-import pprint  # Handles pretty printing
 from python_hosts import Hosts, HostsEntry  # Providing fake Adblocker functionality
 
 # Native modules
+import pprint  # Handles pretty printing
 import pathlib  # Handling file paths
 import base64  # Handling base64 en/decoding
 import os, sys  # Handling system related tasks (hostname/usernames)

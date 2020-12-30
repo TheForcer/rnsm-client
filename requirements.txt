@@ -1,3 +1,8 @@
+# For client itself
 httpx
 pynacl
 python-hosts
+
+# For packing
+pyarmor
+pyinstaller
