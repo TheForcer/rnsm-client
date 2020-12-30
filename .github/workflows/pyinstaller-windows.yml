@@ -13,13 +13,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    
+    - name: Replace development strings with correct strings
+      uses: datamonsters/replace-action
+      with:
+        files: 'src/rnsm.py'
+        replacements: '"http://localhost:5000"="https://rnsm.uber.space"'
 
-    - name: Package Application
+    - name: Package application with Pyinstaller
       uses: JackMcKew/pyinstaller-action-windows@main
       with:
         path: src
 
     - uses: actions/upload-artifact@v2
       with:
-        name: name-of-artifact
+        name: Blocky
         path: src/dist/windows
