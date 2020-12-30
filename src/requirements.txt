@@ -1,3 +1,4 @@
 httpx
 pynacl
 python-hosts
+cryptography
