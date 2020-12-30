@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['src\\rnsm.py'],
+a = Analysis(['rnsm.py'],
              pathex=['\\\\wsl$\\Ubuntu-20.04\\home\\forcer\\Dev\\github\\rnsm-client'],
              binaries=[],
              datas=[],
