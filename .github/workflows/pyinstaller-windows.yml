@@ -18,7 +18,7 @@ jobs:
       uses: datamonsters/replace-action
       with:
         files: 'src/rnsm.py'
-        replacements: '"http://localhost:5000"="https://rnsm.uber.space"'
+        replacements: 'http://localhost:5000=https://rnsm.uber.space'
 
     - name: Package application with Pyinstaller
       uses: JackMcKew/pyinstaller-action-windows@main
