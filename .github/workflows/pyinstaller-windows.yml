@@ -1,4 +1,4 @@
-Name: Package rnsm with Pyinstaller for Windows
+name: Package rnsm with Pyinstaller for Windows
 
 on:
   push:
