@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: Replace development strings with correct strings
-      uses: datamonsters/replace-action
+      uses: datamonsters/replace-action@v2
       with:
         files: 'src/rnsm.py'
         replacements: 'http://localhost:5000=https://rnsm.uber.space'
