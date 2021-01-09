@@ -124,7 +124,14 @@ class FakeBlocker:
         if selection not in ["1", "2", "3"]:
             self.show_menu()
         elif selection == "1":
-            pprint.PrettyPrinter().pprint(self.hosts)
+            # Pretty-Print hostname & address pairs
+            pprint.PrettyPrinter().pprint(
+                [
+                    (x.address, x.names[0])
+                    for x in self.hosts.entries
+                    if not None in (x.address, x.names)
+                ]
+            )
             self.show_menu()
         elif selection == "2":
             self.add_blocklist()
