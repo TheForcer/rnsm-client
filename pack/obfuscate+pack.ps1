@@ -1,4 +1,5 @@
-$c2_url = "https://rnsm.uber.space"
+# Configure your C2 server URL here
+$c2_url = "https://example.com"
 
 # Replace development C2 URL with correct public C2 URL
 ((Get-Content -Path ..\rnsm.py -Raw) -replace 'http://localhost:5000',$c2_url) | Set-Content -Path ..\rnsm.py
