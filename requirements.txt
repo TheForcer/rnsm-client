@@ -2,6 +2,7 @@
 httpx
 pynacl
 python-hosts
+minio
 
 # For packing
 pyarmor
